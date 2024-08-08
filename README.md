@@ -56,3 +56,59 @@ void loop() {
 
 ```
 
+## 录音 储存声音 播放声音
+```C++
+#include <SoftwareSerial.h>
+#include <DFRobotDFPlayerMini.h>
+
+const int buttonPin = 2;   // 按钮引脚
+const int micPin = A0;     // 麦克风引脚
+
+SoftwareSerial mySoftwareSerial(10, 11); // RX, TX
+DFRobotDFPlayerMini myDFPlayer;
+
+bool isPlaying = false;
+
+void setup() {
+  pinMode(buttonPin, INPUT_PULLUP);
+  pinMode(micPin, INPUT);
+  Serial.begin(9600);
+  mySoftwareSerial.begin(9600);
+
+  if (!myDFPlayer.begin(mySoftwareSerial)) {
+    Serial.println("无法初始化MP3-TF-16P模块");
+    while (true);
+  }
+  
+  myDFPlayer.setTimeOut(500); // 设定超时时间
+  myDFPlayer.volume(10); // 设置音量（0~30）
+  myDFPlayer.EQ(DFPLAYER_EQ_NORMAL); // 设置EQ模式
+
+  Serial.println("MP3-TF-16P模块初始化成功");
+}
+
+void loop() {
+  if (digitalRead(buttonPin) == LOW) {
+    delay(50); // 防抖
+    if (isPlaying) {
+      stopPlaying();
+    } else {
+      startPlaying();
+    }
+    while (digitalRead(buttonPin) == LOW); // 等待按钮释放
+  }
+}
+
+void startPlaying() {
+  Serial.println("开始播放录音");
+  isPlaying = true;
+  myDFPlayer.play(1); // 播放
+}
+
+void stopPlaying() {
+  Serial.println("停止播放");
+  myDFPlayer.stop();
+  isPlaying = false;
+}
+```
+
