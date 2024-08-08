@@ -12,46 +12,47 @@ PTC加热模块：随着温度升高，电阻值逐渐增加（用来控制温�
 
 ```C++
 
-const int buttonPin = 2; // 按钮连接到 D2
-const int ptcPin = 3;    // PTC 模块的高低电平/PWM 引脚连接到 D3
+const int buttonPin = 2; // 定义 数字2 代表按钮
+const int ptcPin = 3;    // 定义 数字3 代表加热模块
 
-void setup() {
+void setup() { //初始化内容
   // 初始化串口通讯
   Serial.begin(9600);
   
-  // 初始化按钮引脚为输入模式，并启用上拉电阻
+  // 把按钮设置为为输入模式
   pinMode(buttonPin, INPUT_PULLUP);
   
-  // 初始化 PTC 模块引脚为输出模式
+  // 加热模块设置为输出
   pinMode(ptcPin, OUTPUT);
 
-  // 初始化时关闭 PTC 模块
+  // 初始化时关闭加热模块
   digitalWrite(ptcPin, LOW);
 
   Serial.println("系统初始化完成");
 }
 
-void loop() {
+void loop() { //在代码运行过程中不停循环重复运行
   // 读取按钮状态
   int buttonState = digitalRead(buttonPin);
   
   // 打印按钮状态
   Serial.print("按钮状态: ");
-  Serial.println(buttonState == LOW ? "按下" : "松开");
+  //如果按钮被按下
+  Serial.println(buttonState == HIGH ? "按下" : "松开");
   
   // 如果按钮被按下
-  if (buttonState == LOW) {
-    // 打开 PTC 模块
+  if (buttonState == HIGH) {
+    // 打开加热模块
     digitalWrite(ptcPin, HIGH);
-    Serial.println("PTC 模块状态: 打开");
+    Serial.println("加热模块状态: 打开");
   } else {
     // 关闭 PTC 模块
     digitalWrite(ptcPin, LOW);
     Serial.println("PTC 模块状态: 关闭");
   }
 
-  // 延时100毫秒，避免串口输出过于频繁
-  delay(100);
+  // 延时1秒，避免串口输出过于频繁
+  delay(1000);
 }
 
 ```
