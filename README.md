@@ -56,60 +56,130 @@ void loop() { //在代码运行过程中不停循环重复运行
 }
 
 ```
+## 检测按钮是长按还是短按
+```C++
+/*
+
+ * 由 ArduinoGetStarted.com 创建
+ *
+ * 此示例代码属于公共领域
+ *
+ * 教程页面: https://arduinogetstarted.com/tutorials/arduino-button-long-press-short-press
+ */
+
+// 常量值不会改变。在这里用来设置引脚编号:
+const int BUTTON_PIN = 7; // 按钮引脚号
+const int LONG_PRESS_TIME  = 1000; // 1000 毫秒，定义长按的时间阈值
+
+// 变量值会改变:
+int lastState = LOW;  // 输入引脚的前一个状态
+int currentState;     // 输入引脚的当前状态
+unsigned long pressedTime  = 0;   // 按钮按下时的时间
+unsigned long releasedTime = 0;   // 按钮释放时的时间
+
+void setup() {
+  Serial.begin(9600);                // 初始化串口通信
+  pinMode(BUTTON_PIN, INPUT_PULLUP); // 设置按钮引脚为输入模式，并启用内部上拉电阻
+}
+
+void loop() {
+  // 读取按钮的状态:
+  currentState = digitalRead(BUTTON_PIN);
+
+  if(lastState == HIGH && currentState == LOW) {      // 按钮被按下
+    pressedTime = millis();
+  } 
+  else if(lastState == LOW && currentState == HIGH) { // 按钮被释放
+    releasedTime = millis();
+
+    long pressDuration = releasedTime - pressedTime;
+
+    if(pressDuration > LONG_PRESS_TIME) {
+      Serial.println("检测到长按");
+    } 
+    else {
+      Serial.println("检测到短按");
+    }
+  }
+
+  // 保存上一次的状态
+  lastState = currentState;
+}
+```
 
 ## 录音 储存声音 播放声音
 ```C++
 #include <SoftwareSerial.h>
-#include <DFRobotDFPlayerMini.h>
 
-const int buttonPin = 2;   // 按钮引脚
-const int micPin = A0;     // 麦克风引脚
+// 常量值不会改变。在这里用来设置引脚编号:
+const int BUTTON_PIN = 7;           // 按钮引脚号
+const int LONG_PRESS_TIME = 1000;   // 1000 毫秒，定义长按的时间阈值
 
-SoftwareSerial mySoftwareSerial(10, 11); // RX, TX
-DFRobotDFPlayerMini myDFPlayer;
+// 变量值会改变:
+int lastState = HIGH;               // 初始化为高电平，因为使用上拉电阻
+int currentState;                   // 当前按钮状态
+unsigned long pressedTime = 0;      // 按钮按下时的时间
+unsigned long releasedTime = 0;     // 按钮释放时的时间
 
-bool isPlaying = false;
+SoftwareSerial mySerial(10, 11);    // RX=10, TX=11，可以根据实际接线调整
 
 void setup() {
-  pinMode(buttonPin, INPUT_PULLUP);
-  pinMode(micPin, INPUT);
-  Serial.begin(9600);
-  mySoftwareSerial.begin(9600);
-
-  if (!myDFPlayer.begin(mySoftwareSerial)) {
-    Serial.println("无法初始化MP3-TF-16P模块");
-    while (true);
-  }
+  Serial.begin(9600);                // 初始化串口通信
+  pinMode(BUTTON_PIN, INPUT_PULLUP); // 设置按钮引脚为输入模式，并启用内部上拉电阻
   
-  myDFPlayer.setTimeOut(500); // 设定超时时间
-  myDFPlayer.volume(10); // 设置音量（0~30）
-  myDFPlayer.EQ(DFPLAYER_EQ_NORMAL); // 设置EQ模式
+  // 读取初始状态，防止在启动时误判按钮状态
+  lastState = digitalRead(BUTTON_PIN);
 
-  Serial.println("MP3-TF-16P模块初始化成功");
+  mySerial.begin(9600);              // 初始化与HX6210T模块的通信
 }
 
 void loop() {
-  if (digitalRead(buttonPin) == LOW) {
-    delay(50); // 防抖
-    if (isPlaying) {
-      stopPlaying();
-    } else {
-      startPlaying();
+  // 读取按钮的状态:
+  currentState = digitalRead(BUTTON_PIN);
+
+  if (lastState == HIGH && currentState == LOW) { // 按钮被按下
+    pressedTime = millis();
+  } 
+  else if (lastState == LOW && currentState == HIGH) { // 按钮被释放
+    releasedTime = millis();
+
+    long pressDuration = releasedTime - pressedTime;
+
+    if (pressDuration > LONG_PRESS_TIME) {
+      Serial.println("检测到长按");
+      delay(1000);           // 延迟一秒再播放
+      playBeep();            // 播放“滴”声
+    } 
+    else if (pressDuration > 50) { // 添加防抖机制，忽略极短的误触发
+      Serial.println("检测到短按");
+      delay(1000);           // 延迟一秒再播放
+      playFakeRecording();   // 播放假装的录音
     }
-    while (digitalRead(buttonPin) == LOW); // 等待按钮释放
   }
+
+  // 保存上一次的状态
+  lastState = currentState;
 }
 
-void startPlaying() {
-  Serial.println("开始播放录音");
-  isPlaying = true;
-  myDFPlayer.play(1); // 播放
+void playBeep() {
+  Serial.println("播放滴声...");
+  mySerial.write(0x7E);  // 开始命令头
+  mySerial.write(0x02);  // 数据长度
+  mySerial.write(0x01);  // 播放“滴”声文件 (0001.mp3)
+  mySerial.write(0xEF);  // 结束命令
+  delay(1000);           // 假设播放时长1秒
+  Serial.println("滴声播放结束");
 }
 
-void stopPlaying() {
-  Serial.println("停止播放");
-  myDFPlayer.stop();
-  isPlaying = false;
+void playFakeRecording() {
+  Serial.println("播放假装的录音...");
+  mySerial.write(0x7E);  // 开始命令头
+  mySerial.write(0x02);  // 数据长度
+  mySerial.write(0x02);  // 播放“录音”文件 (0002.mp3)
+  mySerial.write(0xEF);  // 结束命令
+  delay(5000);           // 假设播放时长5秒
+  Serial.println("假装录音播放结束");
 }
+
 ```
 
