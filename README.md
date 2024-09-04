@@ -208,6 +208,7 @@ void playFakeRecording() {
 ## 最终代码
 ```C++
 #include <SoftwareSerial.h>
+#include "DFRobotDFPlayerMini.h"
 
 // 常量值不会改变。在这里用来设置引脚编号:
 const int BUTTON_PIN = 2;           // 按钮引脚号
@@ -220,7 +221,8 @@ int currentState;                   // 当前按钮状态
 unsigned long pressedTime = 0;      // 按钮按下时的时间
 unsigned long releasedTime = 0;     // 按钮释放时的时间
 
-SoftwareSerial mySerial(10, 11);    // RX=10, TX=11，可以根据实际接线调整
+SoftwareSerial mySoftwareSerial(10, 11);  // RX=10, TX=11，可以根据实际接线调整
+DFRobotDFPlayerMini myDFPlayer;           // 创建DFPlayer对象
 
 void setup() {
   Serial.begin(9600);                // 初始化串口通信
@@ -233,8 +235,14 @@ void setup() {
   // 读取初始状态，防止在启动时误判按钮状态
   lastState = digitalRead(BUTTON_PIN);
 
-  mySerial.begin(9600);              // 初始化与HX6210T模块的通信
+  // 初始化DFPlayer Mini模块
+  mySoftwareSerial.begin(9600);  
+  if (!myDFPlayer.begin(mySoftwareSerial)) {
+    Serial.println(F("DFPlayer Mini 初始化失败"));
+    while (true);  // 如果初始化失败，停留在此处
+  }
 
+  myDFPlayer.volume(20);  // 设置音量为20
   Serial.println("系统初始化完成");
 }
 
@@ -253,13 +261,13 @@ void loop() {
     if (pressDuration > LONG_PRESS_TIME) {
       Serial.println("检测到长按");
       delay(1000);           // 延迟一秒再播放
-      playBeep();            // 播放“滴”声
+      playBeep();            // 播放“滴”声 (0001.mp3)
     } 
     else if (pressDuration > 50) { // 添加防抖机制，忽略极短的误触发
       Serial.println("检测到短按");
       delay(1000);           // 延迟一秒再播放
       triggerPTC();          // 触发PTC模块
-      playFakeRecording();   // 播放假装的录音
+      playFakeRecording();   // 播放假装的录音 (0002.mp3)
     }
   }
 
@@ -269,21 +277,15 @@ void loop() {
 
 void playBeep() {
   Serial.println("播放滴声...");
-  mySerial.write(0x7E);  // 开始命令头
-  mySerial.write(0x02);  // 数据长度
-  mySerial.write(0x01);  // 播放“滴”声文件 (0001.mp3)
-  mySerial.write(0xEF);  // 结束命令
-  delay(1000);           // 假设播放时长1秒
+  myDFPlayer.play(1);  // 播放第一个音频文件 (0001.mp3)
+  delay(1000);         // 假设播放时长1秒
   Serial.println("滴声播放结束");
 }
 
 void playFakeRecording() {
   Serial.println("播放假装的录音...");
-  mySerial.write(0x7E);  // 开始命令头
-  mySerial.write(0x02);  // 数据长度
-  mySerial.write(0x02);  // 播放“录音”文件 (0002.mp3)
-  mySerial.write(0xEF);  // 结束命令
-  delay(5000);           // 假设播放时长5秒
+  myDFPlayer.play(2);  // 播放第二个音频文件 (0002.mp3)
+  delay(5000);         // 假设播放时长5秒
   Serial.println("假装录音播放结束");
 }
 
@@ -294,4 +296,5 @@ void triggerPTC() {
   
   // 在此版本中，PTC模块将保持开启状态
 }
+
 ```
